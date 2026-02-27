@@ -1,5 +1,5 @@
 import { setUser } from "./config";
-import { createUser, getUser } from "./lib/db/queries/users";
+import { createUser, deleteAllUsers, getUser } from "./lib/db/queries/users";
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 
 export async function handlerLogin(cmdName:string, ...args: string[]): Promise<void> {
@@ -22,6 +22,15 @@ export async function runCommand(registry: CommandsRegistry, cmdName: string, ..
     const handler = registry[cmdName];
     if (!handler) throw new Error(`Unknown command: ${cmdName}`);
     await handler(cmdName, ...args);
+}
+
+export async function handlerReset(cmdName: string, ...args: string[]) {
+    const res = await deleteAllUsers();
+    if (res === undefined) {
+        console.log("There were no users in the database, nothing to delete");
+        return;
+    }
+    console.log("Successfully deleted all users");
 }
 
 export async function handlerRegister(cmdName: string, ...args: string[]) {
