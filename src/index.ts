@@ -1,4 +1,4 @@
-import { CommandsRegistry, handlerAgg, handlerLogin, handlerRegister, handlerReset, handlerUsers, registerCommand, runCommand } from "./command_handler";
+import { CommandsRegistry, handlerAddFeed, handlerAgg, handlerLogin, handlerRegister, handlerReset, handlerUsers, registerCommand, runCommand } from "./command_handler";
 async function main() {
     let registry: CommandsRegistry = {
         
@@ -8,6 +8,7 @@ async function main() {
     registerCommand(registry, "reset", handlerReset);
     registerCommand(registry, "users", handlerUsers);
     registerCommand(registry, "agg", handlerAgg);
+    registerCommand(registry, "addfeed", handlerAddFeed);
     const args = process.argv.slice(2);
     if (args.length === 0) {
         console.log("You must provide a valid command!");
