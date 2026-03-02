@@ -1,6 +1,6 @@
 import { readConfig, setUser } from "./config";
-import { addFeedToDb } from "./lib/db/queries/feeds";
-import { createUser, deleteAllUsers, getUser, getUsers } from "./lib/db/queries/users";
+import { addFeedToDb, selectAllFeeds } from "./lib/db/queries/feeds";
+import { createUser, deleteAllUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { feeds, users } from "./lib/db/schema";
 import { fetchFeed } from "./lib/rss";
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
@@ -95,8 +95,14 @@ export function printFeed(user: User, feed: Feed) {
         and the ID of the user is ${feed.userId}`);
 }
 
-export async function handlerListFeeds(cmdName: string, args: string[]) {
-    
+export async function handlerListFeeds(cmdName: string, ...args: string[]): Promise<void> {
+    const feeds = await selectAllFeeds();
+    for (const feed of feeds) {
+        const user = await getUserById(feed.userId);
+        console.log(`The ${feed.name}, which can be found at \
+            ${feed.url} \
+            has been created by ${user.name}`);
+    }
 }
 
 export type Feed = typeof feeds.$inferSelect;
