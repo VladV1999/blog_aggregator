@@ -1,5 +1,6 @@
 import { readConfig, setUser } from "./config";
-import { addFeedToDb, selectAllFeeds } from "./lib/db/queries/feeds";
+import { createFeedFollow, getFeedFollowsForUser, } from "./lib/db/queries/feed_follows";
+import { addFeedToDb, selectAllFeeds, selectFeedWithUrl } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { feeds, users } from "./lib/db/schema";
 import { fetchFeed } from "./lib/rss";
@@ -86,6 +87,7 @@ export async function handlerAddFeed(cmdName: string, ...args: string[]): Promis
     }
     const userID = userDB.id;
     const feed = await addFeedToDb(nameOfFeed, url, userID);
+    const result = await createFeedFollow(userID, feed.id);
     printFeed(userDB, feed);
 }
 
@@ -102,6 +104,35 @@ export async function handlerListFeeds(cmdName: string, ...args: string[]): Prom
         console.log(`The ${feed.name}, which can be found at \
             ${feed.url} \
             has been created by ${user.name}`);
+    }
+}
+
+export async function handlerFollow(cmdName: string, ...args: string[]): Promise<void> {
+    if (args.length !== 1) {
+        throw new Error("This function should only contain the URL for the feed!");
+    }
+    const config = readConfig();
+    if (config.currentUserName === undefined) {
+        throw new Error("There is currently no user at this time!");
+    }
+    const user = await getUser(config.currentUserName);
+    const url = args[0];
+    const feedz = await selectFeedWithUrl(url);
+    const feedRecord = await createFeedFollow(user.id, feedz.id);
+    console.log(`The current user is ${config.currentUserName}, and the name of the feed \
+        is ${feedRecord.feedName}`);
+}
+
+export async function handlerFollowing(cmdName: string, ...args: string[]): Promise<void> {
+    const config = readConfig();
+    const currentUser = config.currentUserName;
+    if (currentUser === undefined) {
+        throw new Error("There is currently no user at this time!");
+    }
+    const user = await getUser(currentUser);
+    const feeds = await getFeedFollowsForUser(user.id);
+    for (const feed of feeds) {
+        console.log(`The user ${currentUser} is currently following ${feed.feedName}`);
     }
 }
 
