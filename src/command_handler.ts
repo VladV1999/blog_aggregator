@@ -1,10 +1,10 @@
 import { readConfig, setUser } from "./config";
-import { createFeedFollow, getFeedFollowsForUser, } from "./lib/db/queries/feed_follows";
+import { createFeedFollow, deleteFeedFollow, getFeedFollowsForUser, } from "./lib/db/queries/feed_follows";
 import { addFeedToDb, selectAllFeeds, selectFeedWithUrl } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { feeds, users } from "./lib/db/schema";
 import { fetchFeed } from "./lib/rss";
-export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
+
 
 export async function handlerLogin(cmdName:string, ...args: string[]): Promise<void> {
     if (args.length === 0) {
@@ -69,26 +69,17 @@ export async function handlerAgg(cmdName: string, ...args: string[]): Promise<vo
     console.log(JSON.stringify(await fetchFeed("https://www.wagslane.dev/index.xml")));
 }
 
-export async function handlerAddFeed(cmdName: string, ...args: string[]): Promise<void> {
-    const config = readConfig();
+export async function handlerAddFeed(cmdName: string, user: User, ...args: string[]): Promise<void> {
     if (args.length !== 2) {
         throw new Error("This function only accepts the name of the feed, and its url, \n\
             Please provide only the name and url");
     }
     const nameOfFeed = args[0];
     const url = args[1];
-    const currentUser = config.currentUserName;
-    if (currentUser === undefined) {
-        throw new Error(`The user ${currentUser} is not set in the database yet!`);
-    }
-    const userDB = await getUser(currentUser);
-    if (userDB === undefined) {
-        throw new Error("There was an error retrieving the user from the database");
-    }
-    const userID = userDB.id;
+    const userID = user.id;
     const feed = await addFeedToDb(nameOfFeed, url, userID);
     const result = await createFeedFollow(userID, feed.id);
-    printFeed(userDB, feed);
+    printFeed(user, feed);
 }
 
 export function printFeed(user: User, feed: Feed) {
@@ -107,35 +98,55 @@ export async function handlerListFeeds(cmdName: string, ...args: string[]): Prom
     }
 }
 
-export async function handlerFollow(cmdName: string, ...args: string[]): Promise<void> {
+export async function handlerFollow(cmdName: string, user: User, ...args: string[]): Promise<void> {
     if (args.length !== 1) {
         throw new Error("This function should only contain the URL for the feed!");
     }
-    const config = readConfig();
-    if (config.currentUserName === undefined) {
-        throw new Error("There is currently no user at this time!");
-    }
-    const user = await getUser(config.currentUserName);
     const url = args[0];
     const feedz = await selectFeedWithUrl(url);
     const feedRecord = await createFeedFollow(user.id, feedz.id);
-    console.log(`The current user is ${config.currentUserName}, and the name of the feed \
+    console.log(`The current user is ${user.name}, and the name of the feed \
         is ${feedRecord.feedName}`);
 }
 
-export async function handlerFollowing(cmdName: string, ...args: string[]): Promise<void> {
-    const config = readConfig();
-    const currentUser = config.currentUserName;
-    if (currentUser === undefined) {
-        throw new Error("There is currently no user at this time!");
-    }
-    const user = await getUser(currentUser);
+export async function handlerFollowing(cmdName: string, user: User, ...args: string[]): Promise<void> {
     const feeds = await getFeedFollowsForUser(user.id);
     for (const feed of feeds) {
-        console.log(`The user ${currentUser} is currently following ${feed.feedName}`);
+        console.log(`The user ${user.name} is currently following ${feed.feedName}`);
     }
 }
 
+export async function handlerUnfollow(cmdName: string, user: User, ...args: string[]): Promise<void> {
+    if (args.length !== 1) {
+        throw new Error("This function only accepts the URL, please, provide ONLY the URL!");
+    }
+    const url = args[0];
+    const feed = await selectFeedWithUrl(url);
+    const response = await deleteFeedFollow(feed.id, user.id);
+    if (!response) {
+        throw new Error(`Failed to unfollow feed: ${url}`);
+    }
+    console.log(`${feed.name} Unfollowed Successfully`);
+}
+
+export  function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
+    return async (cmdName: string, ...args: string[]) => {
+        const config = readConfig();
+        const currentUser = config.currentUserName;
+        if (!currentUser) {
+            throw new Error("there is no current user at this time");
+        }
+        const user = await getUser(currentUser);
+        await handler(cmdName, user, ...args);
+    };
+}
 export type Feed = typeof feeds.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 export type CommandsRegistry = Record<string, CommandHandler>;
+export type UserCommandHandler = (
+    cmdName: string,
+    user: User,
+    ...args: string[]
+) => Promise<void>;
+export type middlewareLoggedIn = (handler: UserCommandHandler) => CommandHandler

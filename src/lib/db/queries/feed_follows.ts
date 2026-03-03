@@ -3,15 +3,10 @@ import { db } from "..";
 import { feedFollows, feeds, users } from "../schema";
 
 export async function createFeedFollow(userId: string, feedId: string) {
-    try {
     const [newFeedFollow] = await db
     .insert(feedFollows)
     .values({ feedId, userId })
     .returning();
-    } catch (e: any) {
-        console.error("FULL DB ERROR:", e.cause || e);
-        throw e;
-    }
     const [result] = await db
     .select({
         id: feedFollows.id,
@@ -27,8 +22,8 @@ export async function createFeedFollow(userId: string, feedId: string) {
     .innerJoin(users, eq(feedFollows.userId, users.id))
     .where(
         and(
-        eq(feedFollows.id, feedFollows.id),
-        eq(users.id, feedFollows.userId),
+        eq(feedFollows.id, newFeedFollow.id),
+        eq(users.id, newFeedFollow.userId),
         ),
     );
 
@@ -46,4 +41,13 @@ export async function getFeedFollowsForUser(userId: string) {
      }).from(feedFollows).innerJoin(users, eq(feedFollows.userId, users.id))
     .innerJoin(feeds, eq(feedFollows.feedId, feeds.id)).where(eq(feedFollows.userId, userId));
     return data;
+}
+
+export async function deleteFeedFollow(feedId: string, userId: string) {
+    const [result] = await db
+    .delete(feedFollows)
+    .where(and(eq(feedFollows.feedId, feedId), eq(feedFollows.userId, userId)))
+    .returning();
+
+    return result;
 }
