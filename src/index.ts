@@ -1,5 +1,6 @@
 import {
     CommandsRegistry, handlerAddFeed, handlerAgg,
+    handlerBrowse,
     handlerFollow,
     handlerFollowing,
     handlerListFeeds, handlerLogin,
@@ -21,6 +22,7 @@ async function main() {
     registerCommand(registry, "follow", middlewareLoggedIn(handlerFollow));
     registerCommand(registry, "following", middlewareLoggedIn(handlerFollowing));
     registerCommand(registry, "unfollow", middlewareLoggedIn(handlerUnfollow));
+    registerCommand(registry, "browse", middlewareLoggedIn(handlerBrowse));
     const args = process.argv.slice(2);
     if (args.length === 0) {
         console.log("You must provide a valid command!");

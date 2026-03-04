@@ -1,6 +1,7 @@
 import { readConfig, setUser } from "./config";
 import { createFeedFollow, deleteFeedFollow, getFeedFollowsForUser, } from "./lib/db/queries/feed_follows";
 import { addFeedToDb, getNextFeedToFetch, markFeedFetched, selectAllFeeds, selectFeedWithUrl } from "./lib/db/queries/feeds";
+import { createPost, getPostsForUser } from "./lib/db/queries/posts";
 import { createUser, deleteAllUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { feeds, users } from "./lib/db/schema";
 import { fetchFeed } from "./lib/rss";
@@ -15,7 +16,7 @@ export async function handlerLogin(cmdName:string, ...args: string[]): Promise<v
         throw new Error(`The user ${username} is not registered in the database!`);
     }
     setUser(username);
-    console.log(`The user ${username}`);
+    console.log(`The user ${username} has successfully logged in!`);
 }
 
 export async function registerCommand(registry: CommandsRegistry, cmdName: string, handler: CommandHandler) {
@@ -159,8 +160,8 @@ export async function handlerFollow(cmdName: string, user: User, ...args: string
         throw new Error("This function should only contain the URL for the feed!");
     }
     const url = args[0];
-    const feedz = await selectFeedWithUrl(url);
-    const feedRecord = await createFeedFollow(user.id, feedz.id);
+    const feeds = await selectFeedWithUrl(url);
+    const feedRecord = await createFeedFollow(user.id, feeds.id);
     console.log(`The current user is ${user.name}, and the name of the feed \
         is ${feedRecord.feedName}`);
 }
@@ -205,9 +206,41 @@ export async function scrapeFeeds() {
     await markFeedFetched(feedToGo.id);
     const feed = await fetchFeed(feedToGo.url);
     for (const item of feed.channel.item) {
-        console.log(`Showing the title: ${item.title}`);
+        const date = validateDate(new Date(item.pubDate))
+        const newPost = {
+            url: item.link,
+            feedId: feedToGo.id,
+            title: item.title,
+            description: item.description,
+            publishedAt: date ? new Date(item.pubDate) : new Date()
+        }
+        const post = await createPost(newPost);
+        console.log(`Fetching post title: ${newPost.title}`);
     }
-} 
+}
+
+export async function handlerBrowse(cmdName: string, user: User, ...args: string[]) {
+    if (args.length !== 1) {
+        args[0] = "2";
+    }
+    if (!parseInt((args[0]))) {
+        args[0] = "2";
+    }
+    const limit = parseInt(args[0]); 
+    const result = await getPostsForUser(user.id, limit);
+    for (const item of result) {
+        console.log(`User with id of ${user.name}
+            has looked up the blog: ${item.title}
+            with the url of ${item.url}
+            and here is a small summary for it !
+            ${item.description}`);
+    }
+}
+
+function validateDate(date: Date) {
+    return !isNaN(date.getTime())
+}
+
 export type Feed = typeof feeds.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
