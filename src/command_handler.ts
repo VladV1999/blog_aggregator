@@ -1,6 +1,6 @@
 import { readConfig, setUser } from "./config";
 import { createFeedFollow, deleteFeedFollow, getFeedFollowsForUser, } from "./lib/db/queries/feed_follows";
-import { addFeedToDb, selectAllFeeds, selectFeedWithUrl } from "./lib/db/queries/feeds";
+import { addFeedToDb, getNextFeedToFetch, markFeedFetched, selectAllFeeds, selectFeedWithUrl } from "./lib/db/queries/feeds";
 import { createUser, deleteAllUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { feeds, users } from "./lib/db/schema";
 import { fetchFeed } from "./lib/rss";
@@ -65,9 +65,65 @@ export async function handlerUsers(cmdName: string, ...args: string[]): Promise<
     }
 }
 
-export async function handlerAgg(cmdName: string, ...args: string[]): Promise<void> {
-    console.log(JSON.stringify(await fetchFeed("https://www.wagslane.dev/index.xml")));
+export async function handlerAgg(cmdName: string, ...args: string[]) {
+  if (args.length !== 1) {
+    throw new Error(`usage: ${cmdName} <time_between_reqs>`);
+  }
+
+  const timeArg = args[0];
+  const timeBetweenRequests = parseDuration(timeArg);
+  if (!timeBetweenRequests) {
+    throw new Error(
+      `invalid duration: ${timeArg} — use format 1h 30m 15s or 3500ms`,
+    );
+  }
+
+  console.log(`Collecting feeds every ${timeArg}...`);
+
+  scrapeFeeds().catch(handleError);
+
+  const interval = setInterval(() => {
+    scrapeFeeds().catch(handleError);
+  }, timeBetweenRequests);
+
+  await new Promise<void>((resolve) => {
+    process.on("SIGINT", () => {
+      console.log("Shutting down feed aggregator...");
+      clearInterval(interval);
+      resolve();
+    });
+  });
 }
+
+function handleError(err: unknown) {
+  console.error(
+    `Error scraping feeds: ${err instanceof Error ? err.message : err}`,
+  );
+}
+
+export function parseDuration(durationStr: string) {
+  const regex = /^(\d+)(ms|s|m|h)$/;
+  const match = durationStr.match(regex);
+  if (!match) return;
+
+  if (match.length !== 3) return;
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  switch (unit) {
+    case "ms":
+      return value;
+    case "s":
+      return value * 1000;
+    case "m":
+      return value * 60 * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
+    default:
+      return;
+  }
+}
+
 
 export async function handlerAddFeed(cmdName: string, user: User, ...args: string[]): Promise<void> {
     if (args.length !== 2) {
@@ -129,7 +185,7 @@ export async function handlerUnfollow(cmdName: string, user: User, ...args: stri
     console.log(`${feed.name} Unfollowed Successfully`);
 }
 
-export  function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
+export function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
     return async (cmdName: string, ...args: string[]) => {
         const config = readConfig();
         const currentUser = config.currentUserName;
@@ -140,6 +196,18 @@ export  function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler
         await handler(cmdName, user, ...args);
     };
 }
+
+export async function scrapeFeeds() {
+    const feedToGo = await getNextFeedToFetch();
+    if (!feedToGo) {
+        throw new Error("There are currently no feeds in the database");
+    }
+    await markFeedFetched(feedToGo.id);
+    const feed = await fetchFeed(feedToGo.url);
+    for (const item of feed.channel.item) {
+        console.log(`Showing the title: ${item.title}`);
+    }
+} 
 export type Feed = typeof feeds.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
