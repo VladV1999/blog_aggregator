@@ -10,7 +10,7 @@ export async function handlerBrowse(cmdName: string, user: User, ...args: string
     const limit = parseInt(args[0]); 
     const result = await getPostsForUser(user.id, limit);
     for (const item of result) {
-        console.log(`User with id of ${user.name}
+        console.log(`User with name of ${user.name}
             has looked up the blog: ${item.title}
             with the url of ${item.url}
             and here is a small summary for it !
