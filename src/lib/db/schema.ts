@@ -64,3 +64,5 @@ export const posts = pgTable(
 );
 
 export type NewPost = typeof posts.$inferInsert;
+export type Feed = typeof feeds.$inferSelect;
+export type User = typeof users.$inferSelect;

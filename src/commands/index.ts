@@ -1,13 +1,22 @@
+import { handlerBrowse } from "./command_browse";
 import {
-    CommandsRegistry, handlerAddFeed, handlerAgg,
-    handlerBrowse,
     handlerFollow,
     handlerFollowing,
-    handlerListFeeds, handlerLogin,
-    handlerRegister, handlerReset, handlerUnfollow, handlerUsers,
+    handlerUnfollow
+} from "./command_feed_follows";
+import { handlerAddFeed, handlerListFeeds } from "./command_feeds";
+import {
+    CommandsRegistry,
     middlewareLoggedIn,
     registerCommand, runCommand
 } from "./command_handler";
+import { handlerReset } from "./command_reset";
+import {
+    handlerListUsers,
+    handlerLogin,
+    handlerRegister
+} from "./command_users";
+import { handlerAgg } from "./commands_agg";
 async function main() {
     let registry: CommandsRegistry = {
         
@@ -15,7 +24,7 @@ async function main() {
     registerCommand(registry, "login", handlerLogin);
     registerCommand(registry, "register", handlerRegister);
     registerCommand(registry, "reset", handlerReset);
-    registerCommand(registry, "users", handlerUsers);
+    registerCommand(registry, "users", handlerListUsers);
     registerCommand(registry, "agg", handlerAgg);
     registerCommand(registry, "addfeed", middlewareLoggedIn(handlerAddFeed));
     registerCommand(registry, "feeds", handlerListFeeds);

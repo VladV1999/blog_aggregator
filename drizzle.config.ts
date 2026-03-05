@@ -1,5 +1,5 @@
 import { defineConfig } from "drizzle-kit";
-import { readConfig } from "./src/config";
+import { readConfig } from "./src/commands/config";
 
 const config = readConfig();
 
