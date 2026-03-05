@@ -42,4 +42,4 @@ following -- will display all the feeds that the current user is following!
 unfollow -- will unfollow a feed, but you must provide a url to unfollow!
 
 browse -- will provide all the posts that the current user is following,
-with more detailed information such as titles, and short descriptions
+with more detailed information such as titles, and short descriptions.
