@@ -1,45 +1,122 @@
-Hello and Greetings to everyone reading this!
-This is my own personal blog aggregator that scrapes from the web
-and posts feeds, titles, and follows!
-------------------------------------------------------------------------
-To launch this, or to have a proper configuration,
-you need to set a .gatorconfig.json file right in your root
-some commands use the current user logged in, so it's quite important you do that!
-speaking of commands!
------------------------------------------------------------------------
-To start, since I am using node, you would use
-npm run start <command> <optional args>
-Here is a list of comprehensive commands and what they do!
-login -- This command sets your currentUser in your .gatorconfig.json
-to be the provided user. You must pass the name of the person you wish to register!
+# 📰 Gator — Blog Aggregator
 
-register -- This simply registers a user in the database!
-You would also provide the name to be registered.
+> A CLI-powered RSS feed aggregator built with TypeScript — scrapes feeds on a schedule, manages multi-user subscriptions, and delivers posts straight to your terminal.
 
-reset -- Since cascade is here, and orphaned records are scorned upon
-this wipes the user database, and therefore, all the other ones. 
-no optional args needed
+---
 
-users -- this simply lists all the users in the database! no optional args
-needed
+## What is Gator?
 
-agg -- you must provide a duration, in a single arg like
-1m, 1h, 1s (please don't do one second, do not DOS anyone)
-this will scrape the feeds from the database and show them to you!
+Gator is a command-line RSS aggregator that lets multiple users register, follow feeds, and browse their personalized post feed — all backed by a PostgreSQL database via Drizzle ORM.
 
-addfeed -- you must provide two arguments here! the title of the feed,
-and the url of the feed! this will add a feed to the database, which will,
-in time, with the agg command, show you potential updates!
+You give it a feed URL. It polls it on a schedule you control. Posts accumulate. You browse them. No browser required.
 
-feeds -- no optional args needed, this will simply list all the feeds 
-in the database
+---
 
-follow -- your current user (the one in .gatorconfig) will follow a 
-certain feed, and you will be able to see which ones, with the next command
+## Tech Stack
 
-following -- will display all the feeds that the current user is following!
+| Layer | Technology |
+|---|---|
+| Language | TypeScript |
+| Runtime | Node.js |
+| Database | PostgreSQL |
+| ORM | Drizzle ORM |
+| Config | JSON config file (`~/.gatorconfig.json`) |
+| Feed parsing | RSS/XML HTTP scraping |
 
-unfollow -- will unfollow a feed, but you must provide a url to unfollow!
+---
 
-browse -- will provide all the posts that the current user is following,
-with more detailed information such as titles, and short descriptions.
+## Features
+
+- **Multi-user system** — register multiple users, each with their own feed subscriptions
+- **RSS scraping on a schedule** — `agg` command polls all feeds at a configurable interval
+- **Follow/unfollow feeds** — per-user subscription management
+- **Personalized browse** — see only posts from feeds you follow, with titles and descriptions
+- **CLI-first design** — every action is a clean command with clear arguments
+- **Cascade deletes** — clean data model, no orphaned records
+
+---
+
+## Commands
+
+```bash
+npm run start <command> [args]
+
+register <name>        Register a new user
+login <name>           Set active user in ~/.gatorconfig.json
+users                  List all registered users
+reset                  Wipe the user database (cascades everything)
+
+addfeed <title> <url>  Add an RSS feed to the database
+feeds                  List all feeds
+follow <url>           Follow a feed as the current user
+following              List feeds the current user follows
+unfollow <url>         Unfollow a feed
+
+agg <interval>         Start scraping feeds (e.g. 1m, 30s, 1h)
+browse                 Show posts from feeds you follow
+```
+
+---
+
+## Getting Started
+
+**Prerequisites:** Node.js, PostgreSQL
+
+```bash
+# Clone the repo
+git clone https://github.com/VladV1999/blog_aggregator
+cd blog_aggregator
+
+# Install dependencies
+npm install
+
+# Set up your config file
+echo '{"db_url":"postgresql://user:pass@localhost:5432/gator","current_user_name":""}' \
+  > ~/.gatorconfig.json
+
+# Run migrations
+npm run db:migrate
+
+# Register yourself and start aggregating
+npm run start register vlad
+npm run start login vlad
+npm run start addfeed "Hacker News" "https://news.ycombinator.com/rss"
+npm run start agg 1m
+npm run start browse
+```
+
+---
+
+## How the Scraper Works
+
+```
+agg <interval>
+    │
+    ├── Fetch all feeds from DB
+    ├── For each feed:
+    │     ├── HTTP GET the RSS/XML URL
+    │     ├── Parse feed items
+    │     └── Upsert new posts to DB (skip duplicates)
+    └── Sleep for <interval>, repeat
+```
+
+The scraper runs in a loop — set it going in one terminal, browse in another.
+
+---
+
+## What I Learned
+
+- Building a real CLI application with structured command dispatch in TypeScript
+- RSS/XML parsing and the quirks of real-world feed formats
+- Drizzle ORM for schema management and type-safe queries with PostgreSQL
+- Designing a config system using a local JSON file (`~/.gatorconfig.json`) for persistent user state
+- Cascade deletes and relational schema design — keeping the database clean by design
+
+---
+
+## What's Next
+
+- [ ] Web UI frontend for browsing posts
+- [ ] Feed health monitoring (track failed fetches)
+- [ ] Post search and filtering by keyword
+- [ ] Email digest of new posts
