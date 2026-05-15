@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "target": "esnext",
     "module": "esnext",
     "rootDir": ".",
@@ -8,7 +9,8 @@
     "strict": true,
     "moduleResolution": "Node",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "include": ["./src/**/*.ts", "drizzle.config.ts"],
   "exclude": ["node_modules"]
